@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+        canvas {
+            border:1px solid #d3d3d3;
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body onload="startGame()">
+<script>
+    var screenWidth = window.innerWidth;
+    var screenHeight = window.innerHeight;
+    var squareSide = Math.min(screenWidth,screenHeight)/8*0.7;
+    var bluePiecesPosition = initialPiecesPosition(5, 8);
+    var redPiecesPosition = initialPiecesPosition(0, 3);
+
+    function startGame() {
+        myGameArea.start();
+    }
+
+    var myGameArea = {
+        canvas : document.createElement("canvas"),
+        start : function() {
+            this.canvas.width = 0.98*screenWidth;
+            this.canvas.height = 0.98*screenHeight;
+            this.context = this.canvas.getContext("2d");
+            document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+            this.turn = 0;
+            this.interval = setInterval(updateGameArea, 20);
+            window.addEventListener('mousedown', function (e) {
+                myGameArea.x = e.pageX;
+                myGameArea.y = e.pageY;
+            })
+            window.addEventListener('mouseup', function (e) {
+                myGameArea.x = false;
+                myGameArea.y = false;
+            })
+        },
+        clear : function() {
+            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+    };
+
+    function updateGameArea() {
+        myGameArea.clear();
+        plotCheckersBoard();
+        for (bluePiece = 0; bluePiece < bluePiecesPosition.length; bluePiece++){
+            plotPieces(bluePiecesPosition[bluePiece][0],bluePiecesPosition[bluePiece][1],'blue')
+        }
+        for (redPiece = 0; redPiece < redPiecesPosition.length; redPiece++){
+            plotPieces(redPiecesPosition[redPiece][0],redPiecesPosition[redPiece][1],'red')
+        }
+    }
+
+    function plotCheckersBoard(){
+        var whiteSquare;
+        var blackSquare;
+        for (column = 0; column < 8; column++) {
+            for (line = 0; line < 8; line++) {
+                if (isBlackSquare(line, column)) {
+                    blackSquare = new squareComponent(squareSide, squareSide, "black", screenWidth / 2 + squareSide * (line - 4), screenHeight / 2 + squareSide * (column - 4));
+                    blackSquare.update();
+                }
+                else {
+                    whiteSquare = new squareComponent(squareSide, squareSide, "white", screenWidth / 2 + squareSide * (line - 4), screenHeight / 2 + squareSide * (column - 4));
+                    whiteSquare.update();
+                }
+            }
+        }
+    }
+
+    function isBlackSquare(column,line){
+        return (line-column)%2!==0;
+    }
+
+    function squareComponent(width, height, color, x, y) {
+        this.width = width;
+        this.height = height;
+        this.x = x;
+        this.y = y;
+        this.update = function(){
+            ctx = myGameArea.context;
+            ctx.fillStyle = color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        };
+    }
+
+    function initialPiecesPosition(initialLine,finalLine){
+        piecesPosition = [];
+        for (column = 0; column<8; column++){
+            for (line = initialLine; line<finalLine; line++){
+                if(isBlackSquare(line,column)){
+                    piecesPosition.push([column,line]);
+                }
+            }
+        }
+        return piecesPosition;
+    }
+
+    function plotPieces(column,line,color) {
+        piece = new circleComponent(screenWidth/2+squareSide*(column-3.5),screenHeight/2+squareSide*(line-3.5),0.85*squareSide/2,color);
+        piece.update();
+    }
+
+    function circleComponent(centerX, centerY, radius, color) {
+        this.centerX = centerX;
+        this.centerY = centerY;
+        this.radius = radius;
+        this.color = color;
+        this.update = function(){
+            ctx = myGameArea.context;
+            ctx.beginPath();
+            ctx.arc(this.centerX, this.centerY, this.radius, 0, 2 * Math.PI);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.stroke();
+        };
+        this.clicked = function() {
+            var myleft = this.x;
+            var myright = this.x + (this.width);
+            var mytop = this.y;
+            var mybottom = this.y + (this.height);
+            var clicked = true;
+            if ((mybottom < myGameArea.y) || (mytop > myGameArea.y) || (myright < myGameArea.x) || (myleft > myGameArea.x)) {
+                clicked = false;
+            }
+            return clicked;
+        }
+    }
+
+</script>
+</body>
+
+</html>
