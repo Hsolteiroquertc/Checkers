@@ -16,6 +16,26 @@
     var squareSide = Math.min(screenWidth,screenHeight)/8*0.7;
     var bluePiecesPosition = initialPiecesPosition(5, 8);
     var redPiecesPosition = initialPiecesPosition(0, 3);
+    var mBlueMovements = [];
+    var mBluePieceClicked=-1;
+    var mRedMovements = [];
+    var mRedPieceClicked=-1;
+
+    function initialPiecesPosition(initialLine,finalLine){
+        piecesPosition = [];
+        for (column = 0; column<8; column++){
+            for (line = initialLine; line<finalLine; line++){
+                if(isBlackSquare(line,column)){
+                    piecesPosition.push([column,line]);
+                }
+            }
+        }
+        return piecesPosition;
+    }
+
+    function isBlackSquare(column,line){
+        return (column-line)%2!==0;
+    }
 
     function startGame() {
         myGameArea.start();
@@ -30,13 +50,11 @@
             document.body.insertBefore(this.canvas, document.body.childNodes[0]);
             this.turn = 0;
             this.interval = setInterval(updateGameArea, 20);
+            myGameArea.x = false;
+            myGameArea.y = false;
             window.addEventListener('mousedown', function (e) {
                 myGameArea.x = e.pageX;
                 myGameArea.y = e.pageY;
-            })
-            window.addEventListener('mouseup', function (e) {
-                myGameArea.x = false;
-                myGameArea.y = false;
             })
         },
         clear : function() {
@@ -47,33 +65,59 @@
     function updateGameArea() {
         myGameArea.clear();
         plotCheckersBoard();
-        for (bluePiece = 0; bluePiece < bluePiecesPosition.length; bluePiece++){
-            plotPieces(bluePiecesPosition[bluePiece][0],bluePiecesPosition[bluePiece][1],'blue')
-        }
-        for (redPiece = 0; redPiece < redPiecesPosition.length; redPiece++){
-            plotPieces(redPiecesPosition[redPiece][0],redPiecesPosition[redPiece][1],'red')
-        }
+        plotBluePieces();
+        plotRedPieces();
     }
 
     function plotCheckersBoard(){
-        var whiteSquare;
-        var blackSquare;
-        for (column = 0; column < 8; column++) {
-            for (line = 0; line < 8; line++) {
-                if (isBlackSquare(line, column)) {
-                    blackSquare = new squareComponent(squareSide, squareSide, "black", screenWidth / 2 + squareSide * (line - 4), screenHeight / 2 + squareSide * (column - 4));
+        for (var column = 0; column < 8; column++) {
+            for (var line = 0; line < 8; line++) {
+                if (isBlackSquare(column, line)) {
+                    var blackSquare=squarePosition(column,line,'black');
                     blackSquare.update();
+                    if (searchForArray(mBlueMovements,[column,line])>-1) {
+                        if (blackSquare.clicked()) {
+                            bluePiecesPosition[mBluePieceClicked] = [column, line]
+                            mBluePieceClicked = -1;
+                            mBlueMovements = []
+                            myGameArea.x = false;
+                            myGameArea.y = false;
+                        }
+                    }
+                    if (searchForArray(mRedMovements,[column,line])>-1){
+                        if (blackSquare.clicked()){
+                            redPiecesPosition[mRedPieceClicked]=[column,line]
+                            mRedPieceClicked=-1;
+                            mRedMovements=[]
+                            myGameArea.x = false;
+                            myGameArea.y = false;
+                        }
+                    }
                 }
                 else {
-                    whiteSquare = new squareComponent(squareSide, squareSide, "white", screenWidth / 2 + squareSide * (line - 4), screenHeight / 2 + squareSide * (column - 4));
-                    whiteSquare.update();
+                    var whiterSquare = squarePosition(column,line,'white');
+                    whiterSquare.update()
                 }
             }
         }
     }
 
-    function isBlackSquare(column,line){
-        return (line-column)%2!==0;
+    function searchForArray(haystack, needle){
+        var i, j, current;
+        for(i = 0; i < haystack.length; ++i){
+            if(needle.length === haystack[i].length){
+                current = haystack[i];
+                for(j = 0; j < needle.length && needle[j] === current[j]; ++j);
+                if(j === needle.length)
+                    return i;
+            }
+        }
+        return -1;
+    }
+
+    function squarePosition(column,line,color) {
+        return newSquare = new squareComponent(squareSide, squareSide, color, screenWidth / 2 + squareSide * (column - 4), screenHeight / 2 + squareSide * (line - 4))
+        //newSquare.update()
     }
 
     function squareComponent(width, height, color, x, y) {
@@ -81,30 +125,114 @@
         this.height = height;
         this.x = x;
         this.y = y;
+        this.color = color;
         this.update = function(){
             ctx = myGameArea.context;
             ctx.fillStyle = color;
             ctx.fillRect(this.x, this.y, this.width, this.height);
         };
+        this.clicked = function() {
+            var squareLeft = this.x;
+            var squareRight = this.x + (this.width);
+            var squareTop = this.y;
+            var squareBottom = this.y + (this.height);
+            return isClicked(squareLeft, squareRight, squareTop, squareBottom,'yellow');
+        };
     }
 
-    function initialPiecesPosition(initialLine,finalLine){
-        piecesPosition = [];
-        for (column = 0; column<8; column++){
-            for (line = initialLine; line<finalLine; line++){
-                if(isBlackSquare(line,column)){
-                    piecesPosition.push([column,line]);
-                }
+    function isClicked(left,right,top,bottom) {
+        var clicked = true;//} && myGameArea.y<450 && myGameArea!==false){
+        if ((bottom < myGameArea.y) || (top > myGameArea.y) || (right < myGameArea.x) || (left > myGameArea.x)) {
+                clicked = false;
+        }
+        return clicked;
+    }
+
+    function plotBluePieces() {
+        for (var bluePieceIndex = 0; bluePieceIndex < bluePiecesPosition.length; bluePieceIndex++) {
+            var bluePiece = newPiece(bluePieceIndex,bluePiecesPosition,"blue");
+            if (bluePiece.clicked()) {
+                mBluePieceClicked = bluePieceIndex;
+                bluePieceMovement();
+            }
+            bluePiece.update();
+        }
+    }
+
+    function bluePieceMovement() {
+        var column = bluePiecesPosition[mBluePieceClicked][0];
+        var line = bluePiecesPosition[mBluePieceClicked][1];
+        if(!isBluePiece(column-1,line-1) && column>0){
+            if (searchForArray(mBlueMovements,[column-1,line-1])<0) {
+                mBlueMovements.push([column - 1, line - 1])
+            }
+            var yellowSquare = squarePosition(column - 1,line - 1,'yellow')
+            yellowSquare.update();
+            }
+        if (!isBluePiece(column+1,line-1) && column<7){
+            if (searchForArray(mBlueMovements,[column+1, line-1])<0) {
+                mBlueMovements.push([column + 1, line - 1])
+            }
+            var yellowSquare = squarePosition(column+1,line-1,'yellow')
+            yellowSquare.update();
+        }
+    }
+
+    function isBluePiece(column,line) {
+        for (var bluePieceIndex = 0; bluePieceIndex < bluePiecesPosition.length; bluePieceIndex++) {
+            if (bluePiecesPosition[bluePieceIndex][0]===column && bluePiecesPosition[bluePieceIndex][1]===line){
+                return true
             }
         }
-        return piecesPosition;
+        return false
     }
 
-    function plotPieces(column,line,color) {
-        piece = new circleComponent(screenWidth/2+squareSide*(column-3.5),screenHeight/2+squareSide*(line-3.5),0.85*squareSide/2,color);
-        piece.update();
+    function plotRedPieces() {
+        for (var redPieceIndex = 0; redPieceIndex < redPiecesPosition.length; redPieceIndex++) {
+            var redPiece = newPiece(redPieceIndex,redPiecesPosition,"red");
+            if (redPiece.clicked()) {
+                mRedPieceClicked = redPieceIndex;
+                redPieceMovement();
+            }
+            redPiece.update();
+        }
     }
 
+    function redPieceMovement() {
+        var column = redPiecesPosition[mRedPieceClicked][0];
+        var line = redPiecesPosition[mRedPieceClicked][1];
+        if(!isRedPiece(column-1,line+1) && column>0){
+            if (searchForArray(mRedMovements,[column-1,line+1])<0) {
+                mRedMovements.push([column - 1, line + 1])
+            }
+            var yellowSquare = squarePosition(column - 1,line + 1,'yellow')
+            yellowSquare.update();
+        }
+        if (!isRedPiece(column+1,line+1) && column<7){
+            if (searchForArray(mRedMovements,[column+1, line+1])<0) {
+                mRedMovements.push([column + 1, line + 1])
+            }
+            var yellowSquare = squarePosition(column+1,line+1,'yellow')
+            yellowSquare.update();
+        }
+    }
+
+    function isRedPiece(column,line) {
+        for (var redPieceIndex = 0; redPieceIndex < redPiecesPosition.length; redPieceIndex++) {
+            if (redPiecesPosition[redPieceIndex][0]===column && redPiecesPosition[redPieceIndex][1]===line){
+                return true
+            }
+        }
+        return false
+    }
+
+    function newPiece(pieceIndex, piecesPosition,color) {
+        var column = piecesPosition[pieceIndex][0];
+        var line = piecesPosition[pieceIndex][1];
+        var piece = new circleComponent(screenWidth / 2 + squareSide * (column - 3.5), screenHeight / 2 + squareSide * (line - 3.5), 0.85 * squareSide / 2, color);
+        return piece
+    }
+    
     function circleComponent(centerX, centerY, radius, color) {
         this.centerX = centerX;
         this.centerY = centerY;
@@ -119,15 +247,20 @@
             ctx.stroke();
         };
         this.clicked = function() {
-            var myleft = this.x;
-            var myright = this.x + (this.width);
-            var mytop = this.y;
-            var mybottom = this.y + (this.height);
-            var clicked = true;
-            if ((mybottom < myGameArea.y) || (mytop > myGameArea.y) || (myright < myGameArea.x) || (myleft > myGameArea.x)) {
-                clicked = false;
-            }
-            return clicked;
+            var pieceLeft = this.centerX - this.radius;
+            var pieceRight = this.centerX + this.radius;
+            var pieceTop = this.centerY - this.radius;
+            var pieceBottom = this.centerY + this.radius;
+            return isClicked(pieceLeft,pieceRight,pieceTop,pieceBottom);
+        }
+    }
+
+    function isBlueTurn() {
+        if(myGameArea.turn%2===0){
+            return true
+        }
+        else {
+            return false
         }
     }
 
